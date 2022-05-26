@@ -21,23 +21,20 @@ def config_read(config_path,sdk=True):
         Parameter = Parameter + ',' + inp
     Parameter = Parameter[1:]
     Token = config.get('Token', 'token')
-    code = 'ts.pro_api(%s).query(%s)' % (Token, Parameter)
+    code = f'ts.pro_api({Token}).query({Parameter})'
     Table_name=str(config.get('Parameter', 'sdk'))[1:-1]
-    if sdk==False:
-        return Table_name
-    else:
-        return code
+    return Table_name if sdk==False else code
 
 def tushare_to_sqlite(SQLPath,table_name,data):
     conn = sqlite3.connect(SQLPath)
     cur = conn.cursor()
     try:
-        cur.execute('DROP TABLE %s;' %table_name)
+        cur.execute(f'DROP TABLE {table_name};')
     except sqlite3.OperationalError:
-        print('数据库中不存在表“%s”'%table_name)
+        print(f'数据库中不存在表“{table_name}”')
     conn.commit()
     data.to_sql(table_name, con=conn, if_exists='append',index=False)
-    sql_cmd='select * from %s;'%table_name
+    sql_cmd = f'select * from {table_name};'
     re=pd.read_sql(sql_cmd, conn)
     conn.close()
 
@@ -50,8 +47,7 @@ def get_domanic_path():
     '''返回当前程序所在目录的父目录的相对路径'''
     path=os.path.dirname(os.path.realpath(sys.executable))
     path = path.split('\\')
-    thispypath = "\\".join(path[:-1])
-    return thispypath
+    return "\\".join(path[:-1])
 
 def main():
     try:
@@ -63,9 +59,16 @@ def main():
         print(data)
         table_name = config_read(config_path,False)+'_wwcheng'
         tushare_to_sqlite(thispypath+'\SQLiteSpy\TushareToExcel.db',table_name,data)
-        errorlog_write(thispypath+'\Config\ErrorReport.ini', "数据已保存至数据库中的表 %s，可以进行预览"%table_name)
+        errorlog_write(
+            thispypath + '\Config\ErrorReport.ini',
+            f"数据已保存至数据库中的表 {table_name}，可以进行预览",
+        )
+
     except Exception as e:
-        errorlog_write(thispypath+'\Config\ErrorReport.ini',"出现错误未能获取数据，请检查您输入的参数格式是否有误！" +str(e))
+        errorlog_write(
+            thispypath + '\Config\ErrorReport.ini',
+            f"出现错误未能获取数据，请检查您输入的参数格式是否有误！{str(e)}",
+        )
 
 if __name__ == '__main__':
     main()

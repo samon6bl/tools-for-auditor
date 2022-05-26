@@ -37,7 +37,7 @@ def get_news(day_list):
     pro = ts.pro_api(tushare_token)
     df_list = []
     for d in range(len(day_list)):  # 开始遍历每一个日期
-        print('{}/{} now is getting the news of {}...'.format(d+1,len(day_list),day_list[d]))
+        print(f'{d + 1}/{len(day_list)} now is getting the news of {day_list[d]}...')
         df = pro.cctv_news(date = day_list[d])  # CCTV新闻联播
         df_list.append(df)
         # cctvnews_file = now_path + '\\' + r'cctvnews_{}.csv'.format(day_list[d])
@@ -61,13 +61,7 @@ def get_content(df_list):
 def split_word(content_string):
     result=jieba.analyse.textrank(content_string,topK=300,withWeight=True)
     stopwords=['中国','全面','表示','会议','单位','企业','方式','国家']  # 停用词列表
-    keywords = dict()
-    for i in result:
-        if i[0] in stopwords:
-            pass
-        else:
-            keywords[i[0]]=i[1]
-    return keywords
+    return {i[0]: i[1] for i in result if i[0] not in stopwords}
 
 # 根据提取关键字词绘制词云
 def creat_wordcloud(keywords):
@@ -81,8 +75,8 @@ def creat_wordcloud(keywords):
                                    margin=2,
                                    background_color='white',
                                    mask = mask).generate_from_frequencies(keywords)
-    # wordcloud_cctvnews = WordCloud(font_path=font).generate(keywords)                           
-    wordcloud_cctvnews.to_file(now_path + r'\\cctvnews_{}.jpg'.format(now_time))
+    # wordcloud_cctvnews = WordCloud(font_path=font).generate(keywords)
+    wordcloud_cctvnews.to_file(now_path + f'\\\\cctvnews_{now_time}.jpg')
     print('Cctvnews wordcloud has been creat successfully.')
 
 if __name__ == "__main__":

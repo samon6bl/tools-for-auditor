@@ -40,15 +40,14 @@ def load_info():
 
 def send_email(email_config):
     msg = email.mime.multipart.MIMEMultipart()
-    msg['from'] = __format_addr('{}<{}>'.format(email_config[4],email_config[0]))
-    msg['to'] = __format_addr('{}<{}>'.format(email_config[5],email_config[2]))
+    msg['from'] = __format_addr(f'{email_config[4]}<{email_config[0]}>')
+    msg['to'] = __format_addr(f'{email_config[5]}<{email_config[2]}>')
     msg['subject'] = email_config[3]
     if email_config[7]=='plain':
         txt = email.mime.text.MIMEText(email_config[6], email_config[7], 'utf-8')
     elif email_config[7]=='html':
-        f1 = open(email_config[6], 'r') 
-        content = f1.read() 
-        f1.close() 
+        with open(email_config[6], 'r') as f1:
+            content = f1.read()
         txt = email.mime.text.MIMEText(content, email_config[7], 'utf-8')  # plain or html
     msg.attach(txt)
 
@@ -69,10 +68,9 @@ if __name__ == "__main__":
     email_data = load_info()
     print('正在尝试连接邮箱服务器')
     smtp = smtplib.SMTP()
-    f2 = open(now_path+r'\config.config', 'r') 
-    config = f2.readlines() 
-    config = [c.replace('\n','') for c in config]
-    f2.close() 
+    with open(now_path+r'\config.config', 'r') as f2:
+        config = f2.readlines()
+        config = [c.replace('\n','') for c in config]
     smtp.connect(config[0],config[1])
 
     for i in range(len(email_data)):
@@ -81,17 +79,21 @@ if __name__ == "__main__":
             send_email(email_config)
             a = round(random.uniform(1, 2), 2)
             time.sleep(a)
-            print('邮件发送进度：{}/{}  {}<{}>已发送成功'.format(i+1,len(email_data),email_config[5],email_config[2]))
-            content = '【发送正常】 '+ str(email_config[5]) +' + '+ str(email_config[2]) 
-            log_path = now_path+r'\log\log-{}.txt'.format(now_time)
-            f3 = open(log_path,'a') 
+            print(
+                f'邮件发送进度：{i + 1}/{len(email_data)}  {email_config[5]}<{email_config[2]}>已发送成功'
+            )
+
+            content = f'【发送正常】 {str(email_config[5])} + {str(email_config[2])}'
+            log_path = now_path + f'\\log\\log-{now_time}.txt'
+            f3 = open(log_path,'a')
             f3.write(content+ '\n')
             f3.close
         except Exception as err:
-            content = '【出现错误】 '+ str(email_config[5]) +' + '+ str(email_config[2]) +' + '+ str(err)
+            content = f'【出现错误】 {str(email_config[5])} + {str(email_config[2])} + {str(err)}'
+
             print(content)
-            log_path = now_path+r'\log\log-{}.txt'.format(now_time)
-            f3 = open(log_path,'a') 
+            log_path = now_path + f'\\log\\log-{now_time}.txt'
+            f3 = open(log_path,'a')
             f3.write(content+ '\n')
             f3.close
     smtp.quit()
