@@ -65,7 +65,7 @@ class Qiyekuaizhao(object):
         self.now_path = os.path.abspath(os.curdir)
         now_time = str(time.strftime(
             '%Y%m%d-%H%M%S', time.localtime(time.time())))
-        self.output_file_path = self.now_path + r'\Output\{}'.format(now_time)
+        self.output_file_path = self.now_path + f'\\Output\\{now_time}'
         os.makedirs(self.output_file_path)
         self.company_code = ''
         self.search_key = ''
@@ -79,7 +79,7 @@ class Qiyekuaizhao(object):
             print('请先在cookies.txt中填写cookies信息')
             return None
         else:
-            cookies = cookies[0:-10] + str(int(time.time()))  # 10位数时间戳
+            cookies = cookies[:-10] + str(int(time.time()))
             # cookies = cookies[0:-10]+str(int(time.time()*1000))#13位数时间戳
             return cookies
 
@@ -91,9 +91,8 @@ class Qiyekuaizhao(object):
                 'User-Agent': random.choice(user_agent_list),
                 'Cookie': self.cookies_load(),
             }
-            headers.update(self.base_headers)
-            search_url = 'https://www.tianyancha.com/search?key={}'.format(
-                search_key_urlencode)
+            headers |= self.base_headers
+            search_url = f'https://www.tianyancha.com/search?key={search_key_urlencode}'
             r = requests.get(search_url, headers=headers)
             html = etree.HTML(r.text)
             self.company_code = html.xpath(
@@ -103,13 +102,12 @@ class Qiyekuaizhao(object):
 
     def download_full_report(self):
         try:
-            snapshot_url = 'https://www.tianyancha.com/snapshot/{}'.format(
-                self.company_code)
+            snapshot_url = f'https://www.tianyancha.com/snapshot/{self.company_code}'
             headers = {
                 'User-Agent': random.choice(user_agent_list),
                 'Cookie': self.cookies_load(),
             }
-            headers.update(self.base_headers)
+            headers |= self.base_headers
             r = requests.get(snapshot_url, headers=headers)
             html = etree.HTML(r.text)
             snapshot_img_url = html.xpath(
@@ -159,17 +157,15 @@ class Qiyekuaizhao(object):
         f1 = open(log_path, 'a')
         if snapshot_img_path:
             self.crop_basic_info(snapshot_img_path)
-            f1.write(self.num + '_' + self.search_key + ' 的企业信用报告已成功下载\n')
+            f1.write(f'{self.num}_' + self.search_key + ' 的企业信用报告已成功下载\n')
         else:
-            f1.write(self.num + '_' + self.search_key + ' 的企业信用报告下载失败\n')
+            f1.write(f'{self.num}_' + self.search_key + ' 的企业信用报告下载失败\n')
 
         sleep_time = round(random.uniform(0.5, 3), 2)
         time.sleep(sleep_time)
         if num != 1 and num % 20 == 0:
             print('为减小网站压力，每获取20个信息，休息30秒再继续')
             time.sleep(30)
-        else:
-            pass
 
 
 def load_company():
@@ -179,12 +175,11 @@ def load_company():
         input_xls = now_path+r'\Input\company.xlsx'
         d = pd.read_excel(input_xls)
         df_li = d.values.tolist()
-        company_list = [i[1] for i in df_li]
-        if len(company_list) == 0:
-            print('company.xlsx中未加载到任何公司名称')
-        else:
-            print('已成功加载{}个待查询公司名称'.format(len(company_list)))
+        if company_list := [i[1] for i in df_li]:
+            print(f'已成功加载{len(company_list)}个待查询公司名称')
             return company_list
+        else:
+            print('company.xlsx中未加载到任何公司名称')
     except:
         print('加载公司列表失败！')
 
@@ -193,8 +188,18 @@ def progress_bar(i, start_time, total=100, width=50):
     percent = width / total
     p = int(i*percent)
     t = str(round(time.time() - start_time, 2))
-    bl = "["+str(int(p * 100 / width)) + "%"+"]" + \
-        "[" + str(i) + "/" + str(total) + "]"+"(time:" + t + "s)"
+    bl = (
+        (
+            (
+                ((f"[{int(p * 100 / width)}%]" + "[") + str(i) + "/")
+                + str(total)
+                + "]"
+            )
+            + "(time:"
+        )
+        + t
+    ) + "s)"
+
     a = "下载进度: [" + "#" * p + "_" * (width-p) + "]" + bl
     sys.stdout.write("\r%s" % a)
     sys.stdout.flush()

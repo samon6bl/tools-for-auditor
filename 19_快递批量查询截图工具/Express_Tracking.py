@@ -182,7 +182,7 @@ class Express_Tracking(object):
         self.browser.set_window_size(2560,1440)
         self.browser.get(self.sf_Express_url)
         self.__wait()
-        js2='window.open("{}");'.format(self.kuaidi100_url)
+        js2 = f'window.open("{self.kuaidi100_url}");'
         self.browser.execute_script(js2)
         self.__wait()
         all_handles = self.browser.window_handles
@@ -249,9 +249,9 @@ class Express_Tracking(object):
     @debug
     def get_verify_img(self,verify_times):
         # 获取验证码图片
-        self.logger.info('第 {} 次尝试解析滑动验证码'.format(str(verify_times)))
-        self.incomplete_img = self.mypath[4]+r'\{}_img_incomplete.jpg'.format(str(self.num))
-        self.complete_img = self.mypath[4]+r'\{}_img_complete.jpg'.format(str(self.num))
+        self.logger.info(f'第 {str(verify_times)} 次尝试解析滑动验证码')
+        self.incomplete_img = self.mypath[4] + f'\\{str(self.num)}_img_incomplete.jpg'
+        self.complete_img = self.mypath[4] + f'\\{str(self.num)}_img_complete.jpg'
         # 保存带缺口的滑动图片
         self.__wait()
         img = self.browser.find_element_by_xpath('//img[@id="slideBkg"]')
@@ -273,10 +273,7 @@ class Express_Tracking(object):
         se1 = abs(bg_pixel[0] - fullbg_pixel[0])
         se2 = abs(bg_pixel[1] - fullbg_pixel[1])
         se3 = abs(bg_pixel[2] - fullbg_pixel[2])
-        if se1 < threshold and se2 < threshold and se3 < threshold:
-            return True
-        else:
-            return False      
+        return se1 < threshold and se2 < threshold and se3 < threshold      
 
     def get_distance(self):
         # 获取滑动验证码需要滑动的距离
@@ -288,9 +285,7 @@ class Express_Tracking(object):
             for j in range(fullbg_image.size[1]):
                 # 如果不是相同像素
                 if not self.__is_pixel_equal(fullbg_image, bg_image, i, j):
-                    # 返回此时横轴坐标就是滑块需要移动的距离
-                    mov_pos = i/2-initial_pos
-                    return mov_pos
+                    return i/2-initial_pos
 
     def get_tracks(self,mov_pos):
         # 获取滑动路径列表
@@ -299,10 +294,7 @@ class Express_Tracking(object):
         v0, s, t = 0, 0, 0.4  # 初速度为v0，s是已经走的路程，t是时间
         mid = mov_pos*3/5  # mid是进行减速的路程
         while s < mov_pos:
-            if s < mid:  # 加速区
-                a = 5
-            else:  # 减速区
-                a = -3
+            a = 5 if s < mid else -3
             v = v0
             tance = v*t+0.5*a*(t**2)
             tance = round(tance)
@@ -334,10 +326,7 @@ class Express_Tracking(object):
         # 释放滑块
         ActionChains(self.browser).release().perform()
         try:
-            if self.__is_not_visible('//p[@class="tcaptcha-title"]',10):
-                verify_ok = True
-            else:
-                verify_ok = False
+            verify_ok = bool(self.__is_not_visible('//p[@class="tcaptcha-title"]',10))
         except Exception:
             verify_ok = True
         finally:
@@ -365,7 +354,10 @@ class Express_Tracking(object):
         try:
             delivery_map=self.browser.find_element_by_xpath('//div[@class="delivery"]/div[1]').get_attribute('class')
             target=self.browser.find_element_by_xpath('//input[@type="checkbox"]')
-            if delivery_map=='delivery-item send-out-item' or delivery_map=='delivery-item send-out-item ' :
+            if delivery_map in [
+                'delivery-item send-out-item',
+                'delivery-item send-out-item ',
+            ]:
                 js = "document.getElementsByClassName('delivery-item send-out-item')[0].className = 'delivery-item send-out-item  brief-model'"
                 self.browser.execute_script(js)
             # delivery-item send-out-item  brief-model
@@ -475,19 +467,19 @@ class Express_Tracking(object):
         self.input_bill_number()
         self.switch_to_iframe()
         verify_times,verify_ok=0,False
-        while verify_times<=4 and verify_ok==False:
+        while verify_times <= 4 and not verify_ok:
             try:
                 verify_times+=1
                 self.browser.find_element_by_xpath('//div[@id="reload"]').click()
                 self.get_verify_img(verify_times)
                 mov_pos=self.get_distance() 
                 forward_tracks,backward_tracks=self.get_tracks(mov_pos)  
-                verify_ok=self.move_slider(forward_tracks,backward_tracks)  
+                verify_ok=self.move_slider(forward_tracks,backward_tracks)
             except Exception:
                 self.logger_error.exception("Recording Errors")
                 self.__wait()
             finally:
-                self.logger.info('verify_ok = ' + str(verify_ok))
+                self.logger.info(f'verify_ok = {str(verify_ok)}')
         if verify_times > 4:
             self.logger.info('验证解析尝试5次失败，不再尝试，开始下一个单号')
         if verify_ok==True:
@@ -572,12 +564,15 @@ class Express_Tracking(object):
         try:
             self.num,self.bill_number=bill_number[0],str(bill_number[1])
             self.shot_name=shot_name
-            self.logger.info('当前进度：{}/{} ，正在查询的单号为 [{}]'.format(self.num,self.count,self.bill_number))
+            self.logger.info(
+                f'当前进度：{self.num}/{self.count} ，正在查询的单号为 [{self.bill_number}]'
+            )
+
             comcode=self.get_comcode()
             if comcode=='unknow':
-                self.logger.info('单号 [{}] 所属快递公司未知，无法查询'.format(self.bill_number))
+                self.logger.info(f'单号 [{self.bill_number}] 所属快递公司未知，无法查询')
             else:
-                self.logger.info('单号 [{}] 所属快递公司为 [{}]'.format(self.bill_number,comcode))
+                self.logger.info(f'单号 [{self.bill_number}] 所属快递公司为 [{comcode}]')
                 if comcode=='shunfeng':
                     self.sf_single()
                 else:
@@ -597,8 +592,7 @@ class Input_and_Output(object):
 
     def __validateFileName(self,FileName):
         rstr = r"[\/\\\:\*\?\"\<\>\|]"  # '/ \ : * ? " < > |'
-        new_FileName = re.sub(rstr, "-", FileName)  # 替换为下划线
-        return new_FileName
+        return re.sub(rstr, "-", FileName)
 
     def load_input(self):
         try:
@@ -632,7 +626,7 @@ def main():
     bill_number_list,shot_name_list=io.load_input()
     count=len(bill_number_list)
     bill_number_list=list(enumerate(bill_number_list,start=1))
-    
+
     if count>0:
         track=Express_Tracking(count)# 实例2
         mypath=track.mypath
@@ -642,14 +636,12 @@ def main():
             data = track.main(shot_name_list[i],bill_number_list[i])
             io.output_csv(mypath[2],data)
         io.csv_to_xlsx()
-        if count/100==0:
+        if count == 0:
             track.logger.info('每查询100个，休息2分钟')
             time.sleep(120)
-    else:
-        pass
     stamp = time.time() - start
     mon=round(stamp/60)
-    track.logger.info('所有快递单号查询结束，总用时约 {} 分钟'.format(mon))
+    track.logger.info(f'所有快递单号查询结束，总用时约 {mon} 分钟')
     del track
 
 if __name__ == "__main__":

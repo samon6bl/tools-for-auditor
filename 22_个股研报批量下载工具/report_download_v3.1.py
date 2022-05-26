@@ -98,7 +98,7 @@ class Template(object):
         formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
         handler.setFormatter(formatter)
         self.logger_error = logging.getLogger(" Error_log ")
-        self.logger = logging.getLogger('['+ str(Tools_Info[0])+' '+str(Tools_Info[3])+']')
+        self.logger = logging.getLogger(f'[{str(Tools_Info[0])} {str(Tools_Info[3])}]')
         self.logger.addHandler(handler)
 
     def __write_to_csv(self, output_path, value=[]):
@@ -134,15 +134,14 @@ class Template(object):
             start_time_list = df['查询起始日期'].apply(lambda x:x.strftime('%Y-%m-%d')).tolist()
             end_time_list = df['查询结束日期'].apply(lambda x:x.strftime('%Y-%m-%d')).tolist()
             if len(code_list) == 0:
-                self.logger.info('{} 中未发现公司名称'.format(file_name))
+                self.logger.info(f'{file_name} 中未发现公司名称')
             return code_list,start_time_list,end_time_list
         except:
-            self.logger.info('INPUT文件读取错误，检查 {} 工作簿是否存在'.format(file_name))
+            self.logger.info(f'INPUT文件读取错误，检查 {file_name} 工作簿是否存在')
 
     def checkNameValid(self,name=None):
         reg = re.compile(r'[\\/:*?"<>|\r\n]+')
-        valid_name = reg.findall(name)
-        if valid_name:
+        if valid_name := reg.findall(name):
             for nv in valid_name:
                 name = name.replace(nv, "_")
         return name
@@ -150,19 +149,14 @@ class Template(object):
     def set_function(self):
         fuction_select = input('>>请选择需要执行的功能?\n    1-个股研报下载\n    2-行业研报下载\n    3-机构研报下载\n\n>>在下方输入功能对应的数字，按Enter确认，默认功能1\n')
         fuction_select = fuction_select.replace(' ','')
-        if fuction_select == '2' or fuction_select == '3':
-            func = fuction_select
-        else:
-            func ='1'
-        self.logger.info('开始执行功能 {}'.format(func))
+        func = fuction_select if fuction_select in ['2', '3'] else '1'
+        self.logger.info(f'开始执行功能 {func}')
         return func
 
     def get_one_page(self,code,pageNo=1,beginTime='',endTime=''):
-        if self.function_select =='1':
+        if self.function_select in ['1', '2']:
             base_url = 'http://reportapi.eastmoney.com/report/list?'
-        elif self.function_select =='2':
-            base_url = 'http://reportapi.eastmoney.com/report/list?'
-        elif self.function_select =='3':    
+        elif self.function_select == '3':
             base_url = 'http://reportapi.eastmoney.com/report/dg?'
 
         # JS逆向1
@@ -184,23 +178,21 @@ class Template(object):
         }
         if self.function_select =='1':
             code_dic = {'code': code}
-            data.update(code_dic)
+            data |= code_dic
             # JS逆向2
-            if code[0]==0 or code[0]==2 or code[0]==3:
-                codeid = '0.'+code
-            else:
-                codeid = '1.'+code
+            codeid = '0.'+code if code[0] in [0, 2, 3] else '1.'+code
             headers = {
-                'Referer': 'http://data.eastmoney.com/report/singlestock.jshtml?quoteid={}&stockcode={}'.format(codeid, code),
+                'Referer': f'http://data.eastmoney.com/report/singlestock.jshtml?quoteid={codeid}&stockcode={code}',
                 'User-Agent': random.choice(User_Agent_List),
             }
+
         elif self.function_select =='2':
             code_dic = {'industryCode': code,
                         'orgCode':'',
                         'rcode':'',
                         'qType': '1'
                         }
-            data.update(code_dic)
+            data |= code_dic
             headers = {
                 'Referer': 'http://data.eastmoney.com/report/industry.jshtml',
                 'User-Agent': random.choice(User_Agent_List),
@@ -218,17 +210,16 @@ class Template(object):
                 '_': timestr,
                 }
             headers = {
-                'Referer': 'http://data.eastmoney.com/report/orgpublish.jshtml?orgcode={}'.format(code),
+                'Referer': f'http://data.eastmoney.com/report/orgpublish.jshtml?orgcode={code}',
                 'User-Agent': random.choice(User_Agent_List),
             }
+
         query_string_parameters = urllib.parse.urlencode(data)
         url = base_url + query_string_parameters
         # print(url)
         r = requests.get(url, headers=headers)
         r = r.text[(len(cb)+1):-1]
-        result = json.loads(r)
-
-        return result
+        return json.loads(r)
 
     def download_reports(self,keys):
         # 用代码和时间戳创建文件夹
@@ -239,16 +230,13 @@ class Template(object):
         # 判断总页数和总个数
         result = self.get_one_page(code,1,beginTime,endTime)
         hits = result['hits']
-        self.logger.info('[{}]成功获取{}个研报'.format(code,hits))
+        self.logger.info(f'[{code}]成功获取{hits}个研报')
         TotalPage = result['TotalPage']
         # 循环下载每页报告
-        if hits > 0 :
+        if hits > 0:
             data_list=result['data']
             for page in range(1,TotalPage+1):
-                if page * 50 < hits:
-                    num = 50
-                else:
-                    num = hits - (page-1)*50
+                num = 50 if page * 50 < hits else hits - (page-1)*50
                 if page >1:
                     result = self.get_one_page(code,page,beginTime,endTime)
                     data_list = data_list + result['data']
@@ -256,13 +244,13 @@ class Template(object):
                     try:
                         d = result['data'][i]
                         title, infoCode, orgSName, publishDate, researcher = d['title'], d['infoCode'], d['orgSName'], d['publishDate'][:10], d['researcher']
-                        dl_url = 'http://pdf.dfcfw.com/pdf/H3_{}_1.pdf'.format(infoCode)
+                        dl_url = f'http://pdf.dfcfw.com/pdf/H3_{infoCode}_1.pdf'
                         pdf_name_0 = ('_').join([publishDate, orgSName, title, researcher]) + '.pdf'
                         pdf_name = file_path+'\\'+ self.checkNameValid(pdf_name_0)
                         urllib.request.urlretrieve(dl_url, pdf_name)
-                        self.logger.info('[{}]当前下载进度：{}/{}'.format(code,i+(page-1)*50+1,hits))
+                        self.logger.info(f'[{code}]当前下载进度：{i+(page-1)*50 + 1}/{hits}')
                         name_0 = ('_').join([publishDate, orgSName, title]) + '.pdf'
-                        self.logger.info('当前研报文件名：{}'.format(name_0))
+                        self.logger.info(f'当前研报文件名：{name_0}')
                     except:
                         pass
 
@@ -270,13 +258,11 @@ class Template(object):
                 pf = pd.DataFrame(data_list)
                 pf.fillna('', inplace=True)
                 pf = pf.ix[:, ::-1]
-                file_path=file_path+'\\'+'{}_reports_data.xlsx'.format(code)
+                file_path = file_path+'\\' + f'{code}_reports_data.xlsx'
                 pf.to_excel(file_path, encoding='utf-8', index=False)
-                self.logger.info('[{}]研报汇总表格数据已生成'.format(code))
+                self.logger.info(f'[{code}]研报汇总表格数据已生成')
             except Exception as e:
                 self.logger.info(e)
-        else:
-            pass
 
     def main(self):
         self.function_select = self.set_function()

@@ -21,7 +21,7 @@ def config_read(filepath):
 
 def sqlite_query(SQLPath,table_name):
     conn = sqlite3.connect(SQLPath)
-    sql_cmd='select * from %s;'%table_name
+    sql_cmd = f'select * from {table_name};'
     re=pd.read_sql(sql_cmd, conn)
     conn.close()
     return re
@@ -32,8 +32,7 @@ def tushare_to_excel(excelPath,sqldata):
     writer.save()
 
 def get_time_string():
-    time_str = datetime.datetime.strftime(datetime.datetime.now(),'%Y%m%d%H%M%S')
-    return time_str
+    return datetime.datetime.strftime(datetime.datetime.now(),'%Y%m%d%H%M%S')
 
 def errorlog_write(filename,content):
     with open(filename, 'w', encoding='GB2312') as f:
@@ -44,8 +43,7 @@ def get_domanic_path():
     '''返回当前程序所在目录的父目录的相对路径'''
     path=os.path.dirname(os.path.realpath(sys.executable))
     path = path.split('\\')
-    thispypath = "\\".join(path[:-1])
-    return thispypath
+    return "\\".join(path[:-1])
 
 def main():
     try:
@@ -58,12 +56,19 @@ def main():
         excelPath=thispypath+"\Output\%s.xlsx"%(excel_name)
         tushare_to_excel(excelPath,data)
         if os.path.exists(excelPath):
-            errorlog_write(thispypath+'\Config\ErrorReport.ini', "%s 已下载完成，请打开output文件夹查看"%excel_name)
+            errorlog_write(
+                thispypath + '\Config\ErrorReport.ini',
+                f"{excel_name} 已下载完成，请打开output文件夹查看",
+            )
+
         else:
             errorlog_write(thispypath+'\Config\ErrorReport.ini',"出现错误未能下载成功，请检查您输入的参数格式是否有误！")
     except Exception as e:
-        print('error:'+str(e))
-        errorlog_write(thispypath+'\Config\ErrorReport.ini',"出现错误未能获取数据，请检查您输入的参数格式是否有误！" +str(e))
+        print(f'error:{str(e)}')
+        errorlog_write(
+            thispypath + '\Config\ErrorReport.ini',
+            f"出现错误未能获取数据，请检查您输入的参数格式是否有误！{str(e)}",
+        )
 
 if __name__ == '__main__':
     main()

@@ -25,8 +25,8 @@ def WelCome():
     print('\n')
 
 def get_query_result(searchword):
-    url = 'https://www.tiikong.com/patent/queryresult/getList.do?page=1&pageSize=10&search=(检索关键字:{})&searchType=IntelligentSearch'.format(
-        searchword)
+    url = f'https://www.tiikong.com/patent/queryresult/getList.do?page=1&pageSize=10&search=(检索关键字:{searchword})&searchType=IntelligentSearch'
+
     with open('cookies.txt', 'r') as f:
         cookies = f.read()
     f.close()
@@ -79,24 +79,20 @@ def get_query_result(searchword):
                'Cookie': cookies,
                }
     response = requests.get(url, headers=headers)
-    text = json.loads(response.text)
-    return text
+    return json.loads(response.text)
 
 def get_patent_detail(text):
     data = text['data'][0]
-    data_key = [k for k in data.keys()]
+    data_key = list(data.keys())
 
     key_list = ['patentNo', 'pubNo', 'lastLegalStatus', 'issueDate', 'appDate', 'pubDate', 'appCountry', 'patentHoldersuniqueName', 'patentHolderscountry',
                 'inventorsuniqueName', 'abstracttextCN', 'abstracttextEN']
 
     value_list = []
     for i in key_list:
-        if i in data_key:
-            value = data[i]
-        else:
-            value = ''
+        value = data[i] if i in data_key else ''
         value_list.append(value)
-    for i in range(0,2):
+    for i in range(2):
         value_list[i] = value_list[i]+'\t'#将长数字加上制表符
     value_list[1] = value_list[1].replace("<span class='highLightKeyword'>","").replace('</span>','')
     for i in range(2,5):
@@ -122,7 +118,7 @@ def read_searchword_list(input_path):
 if __name__ == "__main__":
     nowpath = os.path.abspath(os.curdir)
     nowtime = time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))
-    output_path = nowpath+r'\output-{}.csv'.format(nowtime)
+    output_path = nowpath + f'\\output-{nowtime}.csv'
     input_path = nowpath+r'\input.txt'
 
     WelCome()
@@ -137,11 +133,14 @@ if __name__ == "__main__":
             value_list = [searchword + '\t'] + value_list
             time.sleep(0.5)
             write_to_csv(output_path,value_list)
-            [print(str(data_name[i])+':'+str(value_list[i]))
-            for i in range(len(data_name))]
+            [
+                print(f'{str(data_name[i])}:{str(value_list[i])}')
+                for i in range(len(data_name))
+            ]
+
             print('\n')
         except:
-            print('查询 {} 的信息时出错！尝试下一个'.format(searchword))
+            print(f'查询 {searchword} 的信息时出错！尝试下一个')
 
 
 

@@ -106,7 +106,7 @@ class Corp_Info_Scrernshots(object):
         formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
         handler.setFormatter(formatter)
         self.logger_error = logging.getLogger(" Error_log ")
-        self.logger = logging.getLogger('['+ str(Tools_Info[0])+' '+str(Tools_Info[3])+']')
+        self.logger = logging.getLogger(f'[{str(Tools_Info[0])} {str(Tools_Info[3])}]')
         self.logger.addHandler(handler)
 
     def __cookies_load(self):
@@ -117,7 +117,7 @@ class Corp_Info_Scrernshots(object):
             self.logger.info('请先在cookies.txt中填写cookies信息')
             return None
         else:
-            cookies = cookies[0:-10]+str(int(time.time() * 1000))
+            cookies = cookies[:-10] + str(int(time.time() * 1000))
             return cookies
 
     def authorization(self):
@@ -130,9 +130,8 @@ class Corp_Info_Scrernshots(object):
         authorization_info = response_json['clientVars']['padTitle']
         if authorization_info == '15Seconds微信公众号授权成功':
             return True
-        else:
-            self.logger.info(authorization_info)
-            return False
+        self.logger.info(authorization_info)
+        return False
 
     def read_xlsx(self):
         # 读取公司列表
@@ -148,10 +147,10 @@ class Corp_Info_Scrernshots(object):
                 companypos_list = ['0']*(len(company_list))
             self.logger.info('部分数据预览如下：')
             self.logger.info(company_list[:5])
-            if len(company_list) == 0:
+            if not company_list:
                 self.logger.info('company_input.xlsx中未加载到任何公司名称')
             else:
-                self.logger.info('已成功加载{}个待查询公司名称'.format(len(company_list)))
+                self.logger.info(f'已成功加载{len(company_list)}个待查询公司名称')
             return company_list,companypos_list
         except:
             self.logger.info('加载公司列表失败！')
@@ -159,23 +158,24 @@ class Corp_Info_Scrernshots(object):
 
     def get_company_url(self):
         # 获取公司对应的链接
-        self.search_url = 'https://www.qichamao.com/search/all/{}?o=0&area=0&p=1'.format(quote(self.company_name))
+        self.search_url = f'https://www.qichamao.com/search/all/{quote(self.company_name)}?o=0&area=0&p=1'
+
         headers1 = {'Cache-Control': 'max-age=0',
                     'Cookie': self.__cookies_load(),
                     'Upgrade-Insecure-Requests': '1',
                     'User-Agent': random.choice(User_Agent_List), }
-        headers1.update(self.base_headers)
+        headers1 |= self.base_headers
         try:
             r = requests.get(self.search_url, headers = headers1)
             text = r.text
             html = etree.HTML(text)
             company_url_0 = html.xpath('//a[@class="listsec_tit"]/@href')[0]
-            self.company_url = 'https://www.qichamao.com{}'.format(company_url_0)
-            self.logger.info('{} 的网页链接获取成功'.format(self.company_name))
+            self.company_url = f'https://www.qichamao.com{company_url_0}'
+            self.logger.info(f'{self.company_name} 的网页链接获取成功')
             self.company_id = (self.company_url.split('/')[-1]).split('.')[0]
         except Exception as e:
             self.company_url = ''
-            self.logger.info('{} 的网页链接获取失败'.format(self.company_name))
+            self.logger.info(f'{self.company_name} 的网页链接获取失败')
             self.logger.info(e)
 
     def get_page_source(self):
@@ -184,35 +184,32 @@ class Corp_Info_Scrernshots(object):
                     'Cookie': self.__cookies_load(),
                     'Upgrade-Insecure-Requests': '1',
                     'User-Agent': random.choice(User_Agent_List), }
-        headers2.update(self.base_headers)
+        headers2 |= self.base_headers
         try:
             r = requests.get(self.company_url, headers=headers2)
             text = r.text
             self.html = etree.HTML(text)
         except:
             self.html = ''
-            self.logger.info('{} 的页面源码获取失败，已记录在error_log.txt中'.format(self.company_name))
+            self.logger.info(f'{self.company_name} 的页面源码获取失败，已记录在error_log.txt中')
             error_log = self.result_path + '\\error_log.txt'
-            c = '{} 的页面源码获取失败'.format(self.company_name)
+            c = f'{self.company_name} 的页面源码获取失败'
             with open(error_log, "a") as f:
                 f.write(c +'\n')
 
     def get_basic(self):
         # 获取公司基本信息
-        self.logger.info('{} 的基本工商信息正在获取'.format(self.company_name))
+        self.logger.info(f'{self.company_name} 的基本工商信息正在获取')
         try:
             company_name_qcm = self.html.xpath('//div[@class="t"]/h1/text()')[0]
-            if self.company_name == company_name_qcm:
-                match = '一致'
-            else:
-                match = '名称不一致'
+            match = '一致' if self.company_name == company_name_qcm else '名称不一致'
             info = self.html.xpath('//div[@class="qd-table-body li-half f14"]/ul[1]/li/div')
             info = [i.xpath('string(.)').strip() for i in info]
             info = [str(i)+'\t' for i in info]
             basic_info = [self.company_name,company_name_qcm, match] + info
         except:
             self.logger.exception("正在记录发生的错误")
-            basic_info = [self.company_name] +['-']*16  
+            basic_info = [self.company_name] +['-']*16
         return basic_info
 
     def get_cyxx(self):
@@ -228,7 +225,7 @@ class Corp_Info_Scrernshots(object):
             'Cookie': self.__cookies_load(),
             'User-Agent': random.choice(User_Agent_List),
         }
-        headers3.update(self.base_headers)
+        headers3 |= self.base_headers
         try:
             hdoc_area = self.html.xpath('//input[@id="hdoc_area"]/@value')
             data = {
@@ -241,7 +238,7 @@ class Corp_Info_Scrernshots(object):
             data = [dataList[i]['om_name']+'|'+dataList[i]['om_position']
                     for i in range(len(dataList))][::-1]
             cyxx_info = ('+').join(data)
-            if len(cyxx_info) == 0:
+            if not cyxx_info:
                 cyxx_info = '无'
         except:
             cyxx_info = '无'
@@ -253,7 +250,7 @@ class Corp_Info_Scrernshots(object):
         try:
             names = self.html.xpath('//div[@id="M_fzjg"]/div[2]/div/div/ul[2]/li[2]/span/a/text()')
             fzjg_info = ('+').join(names)
-            if len(fzjg_info) == 0:
+            if not fzjg_info:
                 fzjg_info = '无'
         except:
             fzjg_info = '无'
@@ -288,7 +285,7 @@ class Corp_Info_Scrernshots(object):
             czbls = [(czbl.replace('\n', '')).strip() for czbl in czbls]
             dwtzinfo = [names[i]+'|'+farens[i]+'|'+zczbs[i]+'|'+czbls[i]for i in range(len(names))]
             dwtz_info = ('+').join(dwtzinfo)
-            if len(dwtz_info) == 0:
+            if not dwtz_info:
                 dwtz_info = '无'
         except:
             dwtz_info = '无'
@@ -331,9 +328,9 @@ class Corp_Info_Scrernshots(object):
         js = 'window.scrollBy(0,320)'
         self.browser.execute_script(js)
         time.sleep(0.5)
-        screenshot_path = self.result_path + '\\{}_{}.png'.format(num,self.company_name)
+        screenshot_path = self.result_path + f'\\{num}_{self.company_name}.png'
         self.browser.save_screenshot(screenshot_path)
-        self.logger.info('{} 的工商截图已获取'.format(self.company_name))
+        self.logger.info(f'{self.company_name} 的工商截图已获取')
         return screenshot_path
 
     def crop_png(self,screenshot_path):
@@ -341,7 +338,7 @@ class Corp_Info_Scrernshots(object):
         im = Image.open(screenshot_path)
         im1 = im.crop((0, 120, im.size[0]-140, im.size[1]))
         im1.save(screenshot_path)
-        self.logger.info('{} 的工商截图已裁剪完成'.format(self.company_name))
+        self.logger.info(f'{self.company_name} 的工商截图已裁剪完成')
     
     def get_myAK_maxjl(self):
         try:
@@ -356,31 +353,29 @@ class Corp_Info_Scrernshots(object):
 
     def cxzb(self,address,myAK):
         # 查询坐标
-        url = 'http://api.map.baidu.com/geocoding/v3/?address={}&output=json&ak={}&callback=showLocation'.format(address,myAK)
+        url = f'http://api.map.baidu.com/geocoding/v3/?address={address}&output=json&ak={myAK}&callback=showLocation'
+
         r = requests.get(url)
         data = (r.text).replace('showLocation&&showLocation(','')
         data = json.loads(data[:-1])
         lng,lat = data['result']['location']['lng'],data['result']['location']['lat']
-        zb = str(lat) + ',' + str(lng)
-        return zb
+        return f'{str(lat)},{str(lng)}'
 
     def cxjl(self,pos1,pos2,myAK,maxjl):
         # 查询距离
-        url = 'http://api.map.baidu.com/routematrix/v2/driving?output=json&origins={}&destinations={}&ak={}'.format(pos1,pos2,myAK)
+        url = f'http://api.map.baidu.com/routematrix/v2/driving?output=json&origins={pos1}&destinations={pos2}&ak={myAK}'
+
         r = requests.get(url)
         data = json.loads(r.text)
         jl_m = data['result'][0]['distance']['value']
         jl_gl = round(jl_m/1000, 2)
-        if float(jl_gl) <= float(maxjl):
-            jieguo = '未超出'
-        else:
-            jieguo = '超出'
+        jieguo = '未超出' if float(jl_gl) <= float(maxjl) else '超出'
         return jl_gl, jl_m, jieguo
 
     def single_search(self,i):
         try:
             juli_info = ['-']*4
-            result = [self.company_name] +['-']*26 
+            result = [self.company_name] +['-']*26
             self.get_company_url()
             self.get_page_source()
             if self.html != '':
@@ -389,31 +384,30 @@ class Corp_Info_Scrernshots(object):
                 fzjg_info = self.get_fzjg()
                 share_info = self.get_share()
                 dwtz_info = self.get_dwtz()
-                self.logger.info('{} 的基本工商信息获取成功'.format(self.company_name))
+                self.logger.info(f'{self.company_name} 的基本工商信息获取成功')
                 result = basic_info + [cyxx_info,fzjg_info,share_info,dwtz_info]
                 # 截图模块
-                if self.function_id =='2' or self.function_id =='4':
+                if self.function_id in ['2', '4']:
                     screenshot_path = self.get_screenshot(i+1) 
                     self.crop_png(screenshot_path)
-                # 测距模块
-                if (self.function_id =='3' or self.function_id =='4'):
+                if self.function_id in ['3', '4']:
                     if self.company_pos !='0':
-                        myAK,maxjl = self.get_myAK_maxjl() 
-                        address1 = basic_info[17] 
+                        myAK,maxjl = self.get_myAK_maxjl()
+                        address1 = basic_info[17]
                         pos1 = self.cxzb(address1,myAK)
                         address2 = self.company_pos
                         pos2 = self.cxzb(address2,myAK)
                         jl_gl, jl_m, jieguo = self.cxjl(pos1, pos2,myAK,maxjl)
-                        juli_info = [address2, str(jl_gl)+'公里', jl_m, jieguo]
-                        self.logger.info('{} 的地址复核成功'.format(self.company_name))
+                        juli_info = [address2, f'{str(jl_gl)}公里', jl_m, jieguo]
+                        self.logger.info(f'{self.company_name} 的地址复核成功')
                     else:
-                        self.logger.info('{} 的地址未填，无法复核'.format(self.company_name))
+                        self.logger.info(f'{self.company_name} 的地址未填，无法复核')
                 result =result + juli_info
             self.Output_csv(result)
-            # 写入
-            
+                # 写入
+
         except Exception as e:
-            self.logger.info('{} 的基本工商信息获取失败,继续下一个'.format(self.company_name))
+            self.logger.info(f'{self.company_name} 的基本工商信息获取失败,继续下一个')
             self.logger.exception(e)
             error_log = self.result_path + '\\error_log.txt'
             with open(error_log, "a") as f:
@@ -426,7 +420,7 @@ class Corp_Info_Scrernshots(object):
             self.logger.info('15Seconds微信公众号授权成功')
             id = input('''  \n请选择需要执行功能对应数字，默认第1个功能 \n  1、工商信息基础表格\n  2、工商信息基础表格+截图\n  3、工商信息基础表格+地址核对\n  4、工商信息基础表格+截图+地址核对\n\n ''')
             self.function_id = id.strip()
-            self.logger.info('开始执行功能{}'.format(id))
+            self.logger.info(f'开始执行功能{id}')
             company_list,companypos_list= self.read_xlsx()
             self.set_browser_parameters()  # 截图模块-加载浏览器
             title = ['公司名称', '搜索结果', '名称是否一致',  '法定代表人', '纳税人识别号', '名称', '机构代码',
@@ -436,18 +430,18 @@ class Corp_Info_Scrernshots(object):
             self.Output_csv(title)
             for i in range(len(company_list)):
                 self.company_name = company_list[i]
-                if self.function_id =='3' or self.function_id =='4':
+                if self.function_id in ['3', '4']:
                     self.company_pos = companypos_list[i] # 测距模块
-                self.logger.info('当前进度：{}/{} {}'.format(i+1,len(company_list),self.company_name))
+                self.logger.info(f'当前进度：{i + 1}/{len(company_list)} {self.company_name}')
                 self.single_search(i) # 单次查询
                 t = round(random.uniform(1, 2), 2)
-                self.logger.info('---为友好可持续的获取数据，等待 {} 秒---'.format(t))
-                time.sleep(t)  
+                self.logger.info(f'---为友好可持续的获取数据，等待 {t} 秒---')
+                time.sleep(t)
             self.csv_to_xlsx()
         else:
             self.logger.info('15Seconds微信公众号授权失败')
         stamp = time.time() - start_time
-        self.logger.info('查询总用时：{} 秒'.format(str(stamp)))
+        self.logger.info(f'查询总用时：{str(stamp)} 秒')
 
     def __del__(self):
         try:
